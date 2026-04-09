@@ -17,6 +17,7 @@ export default function Home() {
   const [analyzing, setAnalyzing] = useState(false);
   const [selectedSentiment, setSelectedSentiment] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState("");
+  const [diaryTitle, setDiaryTitle] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Update time every minute
@@ -47,16 +48,32 @@ export default function Home() {
     setAnalyzing(true);
     setSelectedSentiment(null);
     setAnalysisResult("");
+    setDiaryTitle("");
 
     try {
       const result = await analyzeDiary(diary);
       setSelectedSentiment(result.sentimentId);
+      setDiaryTitle(result.title);
       setAnalysisResult(result.analysis);
     } catch (error: any) {
       alert(error.message || "분석 중 오류가 발생했습니다.");
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const handleRestart = () => {
+    if (confirm("일기를 초기화하고 다시 작성하시겠습니까?")) {
+      setDiary("");
+      setSelectedSentiment(null);
+      setAnalysisResult("");
+      setDiaryTitle("");
+    }
+  };
+
+  const handleSave = () => {
+    alert("일기가 성공적으로 저장되었습니다!");
+    // Later, this could save to a database.
   };
 
   return (
@@ -98,7 +115,16 @@ export default function Home() {
             }}
           />
           
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex justify-between items-center">
+            <button
+              onClick={handleRestart}
+              className="flex items-center gap-2 rounded-2xl bg-gray-50 px-6 py-3 text-base font-bold text-[#718096] transition-all hover:bg-gray-100 hover:text-[#4A5568] active:scale-95"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              재시작
+            </button>
             <button
               onClick={handleAnalyze}
               disabled={analyzing || !diary.trim()}
@@ -124,7 +150,14 @@ export default function Home() {
         </div>
 
         {/* Sentiment Display */}
-        <div className="flex justify-center rounded-[32px] bg-white/40 p-6 shadow-sm backdrop-blur-md border border-white/20">
+        <div className="flex flex-col items-center gap-6 rounded-[32px] bg-white/40 p-10 shadow-sm backdrop-blur-md border border-white/20">
+          {diaryTitle && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-500 mb-2">
+              <h2 className="text-2xl font-black text-[#2D3748] tracking-tight bg-white/80 px-6 py-2 rounded-2xl shadow-sm border border-white/50">
+                "{diaryTitle}"
+              </h2>
+            </div>
+          )}
           <div className="flex w-full justify-between items-center max-w-lg px-4">
             {SENTIMENTS.map((s) => (
               <div
@@ -143,11 +176,22 @@ export default function Home() {
 
         {/* Analysis Result Text Area */}
         {analysisResult && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 rounded-[32px] bg-white p-8 shadow-sm border border-[#7B61FF]/10">
-            <h3 className="text-lg font-bold text-[#7B61FF] mb-3 flex items-center gap-2">
-              <span className="p-1 rounded-lg bg-[#7B61FF]/10">✨</span> AI 일기 감성 분석 결과
-            </h3>
-            <p className="text-lg leading-relaxed text-[#4A5568] whitespace-pre-wrap">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 rounded-[32px] bg-white p-10 shadow-sm border border-[#7B61FF]/10">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-[#7B61FF] flex items-center gap-2">
+                <span className="p-1.5 rounded-xl bg-[#7B61FF]/10 text-2xl">✨</span> AI 일기 감성 분석 결과
+              </h3>
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#7B61FF] to-[#6366F1] px-6 py-3 text-base font-bold text-white shadow-md transition-all hover:brightness-110 active:scale-95"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                분석 결과 저장
+              </button>
+            </div>
+            <p className="text-xl leading-relaxed text-[#4A5568] whitespace-pre-wrap">
               {analysisResult}
             </p>
           </div>
