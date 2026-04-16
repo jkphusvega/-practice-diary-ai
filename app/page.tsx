@@ -4,6 +4,15 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { analyzeDiary } from "./actions";
 
+interface DiaryEntry {
+  id: string;
+  content: string;
+  sentimentId: string;
+  title: string;
+  analysis: string;
+  createdAt: number;
+}
+
 const SENTIMENTS = [
   { id: "happy", emoji: "😊", label: "행복함" },
   { id: "sad", emoji: "😢", label: "슬픔" },
@@ -19,9 +28,17 @@ export default function Home() {
   const [analysisResult, setAnalysisResult] = useState("");
   const [diaryTitle, setDiaryTitle] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
+  
+  const [savedDiaries, setSavedDiaries] = useState<DiaryEntry[]>([]);
+  const [showList, setShowList] = useState(false);
 
-  // Update time every minute
+  // Load diaries and update time
   useEffect(() => {
+    const saved = localStorage.getItem("my-ai-diaries");
+    if (saved) {
+      setSavedDiaries(JSON.parse(saved));
+    }
+    
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
@@ -72,8 +89,30 @@ export default function Home() {
   };
 
   const handleSave = () => {
+    if (!diary.trim() || !analysisResult) return;
+
+    const newEntry: DiaryEntry = {
+      id: Date.now().toString(),
+      content: diary,
+      sentimentId: selectedSentiment || "unknown",
+      title: diaryTitle,
+      analysis: analysisResult,
+      createdAt: Date.now(),
+    };
+
+    const updated = [newEntry, ...savedDiaries];
+    setSavedDiaries(updated);
+    localStorage.setItem("my-ai-diaries", JSON.stringify(updated));
+    
     alert("일기가 성공적으로 저장되었습니다!");
-    // Later, this could save to a database.
+  };
+
+  const deleteDiary = (id: string) => {
+    if (confirm("이 일기를 삭제하시겠습니까?")) {
+      const updated = savedDiaries.filter(d => d.id !== id);
+      setSavedDiaries(updated);
+      localStorage.setItem("my-ai-diaries", JSON.stringify(updated));
+    }
   };
 
   return (
@@ -90,11 +129,14 @@ export default function Home() {
             </p>
           </div>
           <div className="flex flex-col items-end gap-3 mt-1">
-            <button className="flex items-center gap-2 rounded-2xl bg-white px-5 py-2.5 text-sm font-bold text-[#4A5568] shadow-sm transition-all hover:bg-gray-50 active:scale-95">
+            <button 
+              onClick={() => setShowList(true)}
+              className="flex items-center gap-2 rounded-2xl bg-white px-5 py-2.5 text-sm font-bold text-[#4A5568] shadow-sm transition-all hover:bg-gray-50 active:scale-95"
+            >
               <svg className="w-4 h-4 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
-              일기 목록
+              일기 목록 ({savedDiaries.length})
             </button>
             <span className="text-xl font-bold text-[#2D3748]">오늘의 일기 회고</span>
           </div>
@@ -197,6 +239,85 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Diary List Modal */}
+      {showList && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-300 px-4">
+          <div className="w-full max-w-2xl bg-[#F1F4F9] rounded-[40px] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-500">
+            {/* Modal Header */}
+            <div className="p-8 pb-4 flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-gray-100">
+              <h2 className="text-3xl font-black text-[#2D3748] tracking-tight flex items-center gap-3">
+                <span className="p-2 rounded-2xl bg-[#7B61FF]/10 text-2xl">📚</span> 일기 목록
+              </h2>
+              <button 
+                onClick={() => setShowList(false)}
+                className="p-3 rounded-2xl bg-gray-50 text-[#718096] hover:bg-gray-100 transition-all active:scale-95"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              {savedDiaries.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center opacity-50">
+                  <div className="text-6xl mb-4">✍️</div>
+                  <p className="text-xl font-bold text-[#718096]">아직 작성된 일기가 없어요.</p>
+                  <p className="text-[#A0AEC0]">첫 일기를 작성해 보세요!</p>
+                </div>
+              ) : (
+                savedDiaries.map((entry) => (
+                  <div key={entry.id} className="group relative bg-white rounded-[32px] p-8 shadow-sm border border-transparent hover:border-[#7B61FF]/20 transition-all duration-300">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-bold text-[#A0AEC0]">
+                          {new Date(entry.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        </span>
+                        <h3 className="text-2xl font-black text-[#2D3748] tracking-tight">
+                          "{entry.title}"
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-12 w-12 flex items-center justify-center rounded-full bg-[#F7FAFC] text-2xl shadow-sm ring-2 ring-[#7B61FF]/5">
+                          {SENTIMENTS.find(s => s.id === entry.sentimentId)?.emoji || "📝"}
+                        </div>
+                        <button 
+                          onClick={() => deleteDiary(entry.id)}
+                          className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:bg-red-50 rounded-xl transition-all"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-lg text-[#4A5568] line-clamp-2 leading-relaxed opacity-60 group-hover:opacity-100 transition-opacity">
+                      {entry.content}
+                    </p>
+                    <div className="mt-4 pt-4 border-t border-gray-50 hidden group-hover:block animate-in fade-in slide-in-from-top-2 duration-300">
+                      <p className="text-[#7B61FF] font-medium leading-relaxed italic text-base">
+                        AI의 한마디: {entry.analysis}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="p-8 pt-4 bg-white/50 backdrop-blur-sm border-t border-white/20">
+              <button 
+                onClick={() => setShowList(false)}
+                className="w-full py-4 rounded-[20px] bg-[#2D3748] text-white font-bold text-lg shadow-lg hover:brightness-110 active:scale-[0.98] transition-all"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
