@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 export async function analyzeDiary(content: string) {
   if (!content || content.trim().length < 5) {
-    throw new Error('일기 내용이 너무 짧습니다. 조금 더 자세히 적어보세요.');
+    return { error: '일기 내용이 너무 짧습니다. 조금 더 자세히 적어보세요.' };
   }
 
   try {
@@ -38,10 +38,10 @@ export async function analyzeDiary(content: string) {
       `,
     });
 
-    return object;
-  } catch (error) {
+    return { object };
+  } catch (error: any) {
     console.error('Gemini Analysis Error:', error);
-    throw new Error('감성 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+    return { error: error.message || 'Gemini 분석 중 알 수 없는 오류가 발생했습니다.' };
   }
 }
 
@@ -54,7 +54,7 @@ export async function saveToGoogleSheet(data: {
 }) {
   const url = process.env.GOOGLE_SCRIPT_URL;
   if (!url) {
-    throw new Error('Google Script URL이 설정되지 않았습니다.');
+    return { error: 'Google Script URL이 설정되지 않았습니다.' };
   }
 
   try {
@@ -62,22 +62,18 @@ export async function saveToGoogleSheet(data: {
       method: "POST",
       body: JSON.stringify(data),
       headers: {
-        "Content-Type": "text/plain;charset=utf-8", // GAS tends to handle text/plain or application/json differently depending on deployment
+        "Content-Type": "text/plain;charset=utf-8",
       },
       redirect: "follow",
     });
 
     if (!response.ok) {
-      console.error("Google Sheet Response Error:", response.status, response.statusText);
-      throw new Error(`시트 저장 실패 (상태 코드: ${response.status})`);
+      return { error: `시트 저장 실패 (상태 코드: ${response.status})` };
     }
 
-    return true;
+    return { success: true };
   } catch (error: any) {
     console.error("Google Sheet Sync Error:", error);
-    // Return a structured error instead of throwing to avoid Vercel's masked error if possible, 
-    // but handleAnalyze expects a throw or a result. 
-    // We'll throw but with a clearer message.
-    throw new Error(error.message || "구글 시트와 통신 중 알 수 없는 오류가 발생했습니다. 앱스 스크립트 배포 설정을 확인해 주세요.");
+    return { error: error.message || "구글 시트 통신 오류" };
   }
 }

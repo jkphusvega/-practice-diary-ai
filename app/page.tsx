@@ -69,12 +69,18 @@ export default function Home() {
     setDiaryTitle("");
 
     try {
-      const result = await analyzeDiary(diary);
-      setSelectedSentiment(result.sentimentId);
-      setDiaryTitle(result.title);
-      setAnalysisResult(result.analysis);
-    } catch (error: any) {
-      alert(error.message || "분석 중 오류가 발생했습니다.");
+      const { object, error } = await analyzeDiary(diary);
+      if (error) {
+        alert(`분석 실패: ${error}`);
+        return;
+      }
+      if (object) {
+        setSelectedSentiment(object.sentimentId);
+        setDiaryTitle(object.title);
+        setAnalysisResult(object.analysis);
+      }
+    } catch (e: any) {
+      alert("분석 중 예상치 못한 오류가 발생했습니다.");
     } finally {
       setAnalyzing(false);
     }
@@ -100,13 +106,18 @@ export default function Home() {
 
     try {
       // 1. 구글 시트 저장 시도
-      await saveToGoogleSheet({
+      const { success, error } = await saveToGoogleSheet({
         date: dateStr,
         title: diaryTitle,
         content: diary,
         sentiment: SENTIMENTS.find(s => s.id === selectedSentiment)?.label || "기타",
         analysis: analysisResult
       });
+
+      if (error) {
+        alert(`시트 저장 실패: ${error}`);
+        return;
+      }
 
       // 2. 로컬 스토리지 저장 (동기화 성공 시)
       const newEntry: DiaryEntry = {
@@ -123,8 +134,8 @@ export default function Home() {
       localStorage.setItem("my-ai-diaries", JSON.stringify(updated));
       
       alert("일기가 구글 시트와 로컬에 모두 안전하게 저장되었습니다! ✨");
-    } catch (error: any) {
-      alert(error.message || "저장 중 오류가 발생했습니다.");
+    } catch (e: any) {
+      alert("저장 중 예상치 못한 오류가 발생했습니다.");
     } finally {
       setIsSaving(false);
     }
