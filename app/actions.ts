@@ -59,20 +59,25 @@ export async function saveToGoogleSheet(data: {
 
   try {
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(data),
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "text/plain;charset=utf-8", // GAS tends to handle text/plain or application/json differently depending on deployment
       },
+      redirect: "follow",
     });
 
     if (!response.ok) {
-      throw new Error('구글 시트 저장에 실패했습니다.');
+      console.error("Google Sheet Response Error:", response.status, response.statusText);
+      throw new Error(`시트 저장 실패 (상태 코드: ${response.status})`);
     }
 
     return true;
-  } catch (error) {
-    console.error('Google Sheet Sync Error:', error);
-    throw new Error('서버와 통신 중 오류가 발생했습니다.');
+  } catch (error: any) {
+    console.error("Google Sheet Sync Error:", error);
+    // Return a structured error instead of throwing to avoid Vercel's masked error if possible, 
+    // but handleAnalyze expects a throw or a result. 
+    // We'll throw but with a clearer message.
+    throw new Error(error.message || "구글 시트와 통신 중 알 수 없는 오류가 발생했습니다. 앱스 스크립트 배포 설정을 확인해 주세요.");
   }
 }
