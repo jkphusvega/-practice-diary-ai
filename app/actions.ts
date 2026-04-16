@@ -44,3 +44,35 @@ export async function analyzeDiary(content: string) {
     throw new Error('감성 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
   }
 }
+
+export async function saveToGoogleSheet(data: {
+  date: string;
+  title: string;
+  content: string;
+  sentiment: string;
+  analysis: string;
+}) {
+  const url = process.env.GOOGLE_SCRIPT_URL;
+  if (!url) {
+    throw new Error('Google Script URL이 설정되지 않았습니다.');
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('구글 시트 저장에 실패했습니다.');
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Google Sheet Sync Error:', error);
+    throw new Error('서버와 통신 중 오류가 발생했습니다.');
+  }
+}

@@ -88,23 +88,45 @@ export default function Home() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!diary.trim() || !analysisResult) return;
 
-    const newEntry: DiaryEntry = {
-      id: Date.now().toString(),
-      content: diary,
-      sentimentId: selectedSentiment || "unknown",
-      title: diaryTitle,
-      analysis: analysisResult,
-      createdAt: Date.now(),
-    };
+    setIsSaving(true);
+    const dateStr = new Date().toLocaleString('ko-KR', { 
+      year: 'numeric', month: 'long', day: 'numeric', 
+      hour: '2-digit', minute: '2-digit' 
+    });
 
-    const updated = [newEntry, ...savedDiaries];
-    setSavedDiaries(updated);
-    localStorage.setItem("my-ai-diaries", JSON.stringify(updated));
-    
-    alert("일기가 성공적으로 저장되었습니다!");
+    try {
+      // 1. 구글 시트 저장 시도
+      await saveToGoogleSheet({
+        date: dateStr,
+        title: diaryTitle,
+        content: diary,
+        sentiment: SENTIMENTS.find(s => s.id === selectedSentiment)?.label || "기타",
+        analysis: analysisResult
+      });
+
+      // 2. 로컬 스토리지 저장 (동기화 성공 시)
+      const newEntry: DiaryEntry = {
+        id: Date.now().toString(),
+        content: diary,
+        sentimentId: selectedSentiment || "unknown",
+        title: diaryTitle,
+        analysis: analysisResult,
+        createdAt: Date.now(),
+      };
+
+      const updated = [newEntry, ...savedDiaries];
+      setSavedDiaries(updated);
+      localStorage.setItem("my-ai-diaries", JSON.stringify(updated));
+      
+      alert("일기가 구글 시트와 로컬에 모두 안전하게 저장되었습니다! ✨");
+    } catch (error: any) {
+      alert(error.message || "저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const deleteDiary = (id: string) => {
@@ -225,12 +247,24 @@ export default function Home() {
               </h3>
               <button
                 onClick={handleSave}
-                className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#7B61FF] to-[#6366F1] px-6 py-3 text-base font-bold text-white shadow-md transition-all hover:brightness-110 active:scale-95"
+                disabled={isSaving}
+                className={`flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#7B61FF] to-[#6366F1] px-6 py-3 text-base font-bold text-white shadow-md transition-all hover:brightness-110 active:scale-95 disabled:opacity-50
+                  ${isSaving ? "animate-pulse cursor-not-allowed" : ""}
+                `}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                </svg>
-                분석 결과 저장
+                {isSaving ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    저장 중...
+                  </div>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    분석 결과 저장
+                  </>
+                )}
               </button>
             </div>
             <p className="text-xl leading-relaxed text-[#4A5568] whitespace-pre-wrap">
