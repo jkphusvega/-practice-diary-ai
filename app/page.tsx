@@ -31,6 +31,7 @@ export default function Home() {
   
   const [savedDiaries, setSavedDiaries] = useState<DiaryEntry[]>([]);
   const [showList, setShowList] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load diaries and update time
   useEffect(() => {
