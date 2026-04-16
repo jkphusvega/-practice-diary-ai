@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { analyzeDiary } from "./actions";
+import { analyzeDiary, saveToGoogleSheet } from "./actions";
 
 interface DiaryEntry {
   id: string;
